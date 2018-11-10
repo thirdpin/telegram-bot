@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram import ChatAction, ReplyKeyboardMarkup
 import logging
 import sys
 from stuff.common import DoorOpener
@@ -15,7 +16,10 @@ logger = logging.getLogger(__name__)
 
 def start(bot, update):
     """Send a message when the command /start is issued."""
-    update.message.reply_text('Hi!')
+    
+    custom_keyboard = [["/open_door"],["/get_temperature_and_humidity"]]
+    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+    update.message.reply_text('Hi!', reply_markup=reply_markup)
 
 def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
