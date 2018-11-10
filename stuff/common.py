@@ -6,10 +6,6 @@ import time
 import logging
 
 
-BAUDRATE = 115200
-TIMEOUT = 3
-PARITY = 'N'
-
 class Logger():
     def __init__(self):
         # Enable logging
@@ -28,9 +24,6 @@ class DoorOpener(object):
         self.device = self.get_device(spider_id)
 
     def get_device(self, spider_id):
-        minimalmodbus.BAUDRATE = BAUDRATE
-        minimalmodbus.TIMEOUT = TIMEOUT
-        minimalmodbus.PARITY = PARITY
         for port in list(serial.tools.list_ports.comports()):
             if (port.vid == 0x0403) and (port.pid == 0x6015):
                 device = minimalmodbus.Instrument(str(port.device),

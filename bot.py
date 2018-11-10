@@ -8,6 +8,10 @@ import sys
 from stuff.common import DoorOpener
 from stuff.ivitmrs import IvitMRS, _find_device 
 
+BAUDRATE = 115200
+TIMEOUT = 3
+PARITY = 'N'
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -20,6 +24,10 @@ def start(bot, update):
     custom_keyboard = [["/open_door"],["/get_temperature_and_humidity"]]
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
     update.message.reply_text('Hi!', reply_markup=reply_markup)
+
+    minimalmodbus.BAUDRATE = BAUDRATE
+    minimalmodbus.TIMEOUT = TIMEOUT
+    minimalmodbus.PARITY = PARITY
 
 def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
@@ -58,7 +66,7 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("open_door", open_door))
-    # dp.add_handler(CommandHandler("get_temperature_and_humidity", get_temperature_and_humidity))
+    dp.add_handler(CommandHandler("get_temperature_and_humidity", get_temperature_and_humidity))
 
     # log all errors
     dp.add_error_handler(error)
