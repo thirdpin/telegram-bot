@@ -5,6 +5,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import logging
 import sys
 from stuff.common import DoorOpener
+from stuff.ivitmrs import IvitMRS, _find_device 
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -12,12 +13,19 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-
-# Define a few command handlers. These usually take the two arguments bot and
-# update. Error handlers also receive the raised TelegramError object in error.
 def start(bot, update):
     """Send a message when the command /start is issued."""
     update.message.reply_text('Hi!')
+
+def get_temperature_and_humidity(bot, update):
+    dev_handler = _find_device(0x0403, 0x6015)
+    if dev_handler:
+        ivt_mrs = IvitMRS(dev_handler.device)
+        msg = 'Temperature: %s. Humidity: %s' % (float("%0.1f" % ivt_mrs.temp), 
+                                                 float("%0.1f" % ivt_mrs.humidity))
+        update.message.reply_text(msg)
+    else:
+        update.message.reply_text('Something goes wrong!')
 
 def open_door(bot, update):
     update.message.reply_text('Opening door...')
@@ -46,6 +54,7 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("open_door", open_door))
+    # dp.add_handler(CommandHandler("get_temperature_and_humidity", get_temperature_and_humidity))
 
     # log all errors
     dp.add_error_handler(error)

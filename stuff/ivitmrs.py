@@ -81,6 +81,7 @@ class IvitMRS(object):
 
     @property
     def humidity(self):
+        # return float("%0.1f" % self.read_reg(REGS.humidity))
         return self.read_reg(REGS.humidity)
 
     @property
@@ -93,6 +94,7 @@ class IvitMRS(object):
 
     @property
     def temp(self):
+        # return float("%0.1f" % self.read_reg(REGS.temp))
         return self.read_reg(REGS.temp)
 
     @property
