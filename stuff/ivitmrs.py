@@ -57,23 +57,16 @@ REGS = IvitMRSRegs(
 
 
 class IvitMRS(object):
-    def __init__(self, port, dev_addr=247, baud=9600, parity='E', timeout=1):
-        # Save an old glob MB settings
-        baud_old = minimalmodbus.BAUDRATE
-        timout_old = minimalmodbus.TIMEOUT
-        parity_old = minimalmodbus.PARITY
+    def __init__(self, port, dev_addr=247):
+        log = _Logger.instance()
 
-        minimalmodbus.BAUDRATE = baud
-        minimalmodbus.TIMEOUT = timeout
-        minimalmodbus.PARITY = parity
+        try:
+            self._mb = minimalmodbus.Instrument(str(port), dev_addr, mode='rtu')
+        except Exception as e:
+            log.error(str(e), exc_info=True)
+            raise e
 
-        self._mb = minimalmodbus.Instrument(str(port), dev_addr, mode='rtu')
         self._dev_addr = dev_addr
-
-        # Restore an old glob MB settings
-        minimalmodbus.BAUDRATE = baud_old
-        minimalmodbus.TIMEOUT = timout_old
-        minimalmodbus.PARITY = parity_old
 
     def read_reg(self, reg):
         return reg.value_type(
@@ -81,7 +74,6 @@ class IvitMRS(object):
 
     @property
     def humidity(self):
-        # return float("%0.1f" % self.read_reg(REGS.humidity))
         return self.read_reg(REGS.humidity)
 
     @property
@@ -94,7 +86,6 @@ class IvitMRS(object):
 
     @property
     def temp(self):
-        # return float("%0.1f" % self.read_reg(REGS.temp))
         return self.read_reg(REGS.temp)
 
     @property
@@ -144,6 +135,11 @@ def _find_device(vid, pid):
 
 if __name__ == "__main__":
     dev_handler = _find_device(0x0403, 0x6015)
+    # Restore an old glob MB settings
+    minimalmodbus.BAUDRATE = 9600
+    minimalmodbus.TIMEOUT = 1
+    minimalmodbus.PARITY = 'E'
+
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
     else:
