@@ -13,10 +13,6 @@ BAUDRATE = 115200
 TIMEOUT = 3
 PARITY = 'N'
 
-BAUDRATE = 115200
-TIMEOUT = 3
-PARITY = 'N'
-
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -29,10 +25,6 @@ def start(bot, update):
     custom_keyboard = [["/open_door"],["/get_temperature_and_humidity"]]
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
     update.message.reply_text('Hi!', reply_markup=reply_markup)
-
-    minimalmodbus.BAUDRATE = BAUDRATE
-    minimalmodbus.TIMEOUT = TIMEOUT
-    minimalmodbus.PARITY = PARITY
 
 def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
@@ -61,6 +53,10 @@ def error(bot, update, error):
 
 
 def main():
+    minimalmodbus.BAUDRATE = BAUDRATE
+    minimalmodbus.TIMEOUT = TIMEOUT
+    minimalmodbus.PARITY = PARITY
+
     """Start the bot."""
     # Create the EventHandler and pass it your bot's token.
     updater = Updater(sys.argv[1])
