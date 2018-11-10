@@ -59,12 +59,16 @@ class DoorOpener(object):
     def door_stuff(self):
         """Opens/closes the door and blinks traffic light.
         """
-        self._traffic_light_on()
-        self._open_door()
-        time.sleep(1)
-        self._close_door()
-        time.sleep(3)
-        self._traffic_light_off()
+        try:
+            self._traffic_light_on()
+            self._open_door()
+            time.sleep(1)
+            self._close_door()
+            time.sleep(3)
+            self._traffic_light_off()
+            return True
+        except:
+            return False
 
     def _open_door(self):
         self.device.write_bit(8,1, functioncode=0x05)
