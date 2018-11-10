@@ -7,6 +7,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 from stuff.common import DoorOpener
+from stuff import ivitmrs
 from stuff.ivitmrs import IvitMRS, _find_device
 import minimalmodbus
 import json
@@ -15,6 +16,8 @@ BAUDRATE = 115200
 TIMEOUT = 3
 PARITY = 'N'
 
+LIMITED_ACCESS_USER_IDS = []
+LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
 
 class _Logger():
     def __init__(self):
@@ -50,10 +53,6 @@ class _Logger():
     is_inited = False
 
 
-LIMITED_ACCESS_USER_IDS = []
-LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
-
-
 def start(bot, update):
     """Send a message when the command /start is issued."""
 
@@ -66,8 +65,11 @@ def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: %s. Humidity: %s' % (float(
-            "%0.1f" % ivt_mrs.temp), float("%0.1f" % ivt_mrs.humidity))
+        msg = 'Temperature: {t:0.1f}{t_units:s}. '\
+              'Humidity: {h:0.1f}{h_units:s}'.format(
+            t=ivt_mrs.temp, t_units=ivitmrs.REGS.temp.units,
+            h=ivt_mrs.humidity, h_units=ivitmrs.REGS.humidity.units)
+
         update.message.reply_text(msg)
     else:
         update.message.reply_text('Something goes wrong!')
