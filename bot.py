@@ -65,10 +65,10 @@ def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: {t:0.1f}{t_units:s}. '\
-              'Humidity: {h:0.1f}{h_units:s}'.format(
-            t=ivt_mrs.temp, t_units=ivitmrs.REGS.temp.units,
-            h=ivt_mrs.humidity, h_units=ivitmrs.REGS.humidity.units)
+        msg = 'Temperature: {t:0.1f}C. '\
+              'Humidity: {h:0.1f}%'.format(
+            t=ivt_mrs.temp,
+            h=ivt_mrs.humidity)
 
         update.message.reply_text(msg)
     else:
