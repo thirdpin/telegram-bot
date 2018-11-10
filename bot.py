@@ -8,6 +8,7 @@ import sys
 from stuff.common import DoorOpener
 from stuff.ivitmrs import IvitMRS, _find_device
 import minimalmodbus
+import json
 
 BAUDRATE = 115200
 TIMEOUT = 3
@@ -19,9 +20,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-LIMITED_ACCESS_USER_IDS = (
-    73539646,
-)
+LIMITED_ACCESS_USER_IDS = []
+LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
 
 def start(bot, update):
     """Send a message when the command /start is issued."""
@@ -68,6 +68,10 @@ def main():
     minimalmodbus.BAUDRATE = BAUDRATE
     minimalmodbus.TIMEOUT = TIMEOUT
     minimalmodbus.PARITY = PARITY
+
+    with open(LIMITED_ACCESS_USER_IDS_FILE) as f:
+        data = json.load(f)
+        LIMITED_ACCESS_USER_IDS = data["ids"]
 
     """Start the bot."""
     # Create the EventHandler and pass it your bot's token.
