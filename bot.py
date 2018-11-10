@@ -6,7 +6,12 @@ from telegram import ChatAction, ReplyKeyboardMarkup
 import logging
 import sys
 from stuff.common import DoorOpener
-from stuff.ivitmrs import IvitMRS, _find_device 
+from stuff.ivitmrs import IvitMRS, _find_device
+import minimalmodbus
+
+BAUDRATE = 115200
+TIMEOUT = 3
+PARITY = 'N'
 
 BAUDRATE = 115200
 TIMEOUT = 3
