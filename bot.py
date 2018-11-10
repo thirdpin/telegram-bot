@@ -15,40 +15,59 @@ BAUDRATE = 115200
 TIMEOUT = 3
 PARITY = 'N'
 
-## --> Enable logging
-__formatter = logging.Formatter(
-    '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
 
-__ch = logging.StreamHandler()
-__ch.setFormatter(__formatter)
-__ch.setLevel(logging.INFO)
+class _Logger():
+    def __init__(self):
+        if not _Logger.is_inited:
+            __formatter = logging.Formatter(
+                '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
 
-__fh = RotatingFileHandler("log.txt", maxBytes=1048576, backupCount=5)
-__fh.setFormatter(__formatter)
-__fh.setLevel(logging.DEBUG)
+            __ch = logging.StreamHandler()
+            __ch.setFormatter(__formatter)
+            __ch.setLevel(logging.INFO)
 
-logger = logging.getLogger(__name__)
-logger.addHandler(__fh)
-logger.addHandler(__ch)
-logger.setLevel(logging.DEBUG)
-## <--
+            __fh = RotatingFileHandler(
+                "log.txt", maxBytes=1048576, backupCount=5)
+            __fh.setFormatter(__formatter)
+            __fh.setLevel(logging.DEBUG)
+
+            self._logger = logging.getLogger(__name__)
+            self._logger.addHandler(__fh)
+            self._logger.addHandler(__ch)
+            self._logger.setLevel(logging.DEBUG)
+
+            _Logger.is_inited = True
+        else:
+            self._logger = logging.getLogger(__name__)
+
+    @property
+    def logger(self):
+        return self._logger
+
+    def instance():
+        return _Logger()._logger
+
+    is_inited = False
+
 
 LIMITED_ACCESS_USER_IDS = []
 LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
 
+
 def start(bot, update):
     """Send a message when the command /start is issued."""
 
-    custom_keyboard = [["/open_door"],["/get_temperature_and_humidity"]]
+    custom_keyboard = [["/open_door"], ["/get_temperature_and_humidity"]]
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
     update.message.reply_text('Hi!', reply_markup=reply_markup)
+
 
 def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: %s. Humidity: %s' % (float("%0.1f" % ivt_mrs.temp),
-                                                 float("%0.1f" % ivt_mrs.humidity))
+        msg = 'Temperature: %s. Humidity: %s' % (float(
+            "%0.1f" % ivt_mrs.temp), float("%0.1f" % ivt_mrs.humidity))
         update.message.reply_text(msg)
     else:
         update.message.reply_text('Something goes wrong!')
@@ -56,6 +75,9 @@ def get_temperature_and_humidity(bot, update):
 
 def open_door(bot, update):
     global LIMITED_ACCESS_USER_IDS
+
+    logger = _Logger.instance()
+
     if update.message.chat.id not in LIMITED_ACCESS_USER_IDS:
         update.message.reply_text('Sorry, but this function is not '
                                   'avaliable for you, pal.')
@@ -73,8 +95,10 @@ def open_door(bot, update):
     else:
         update.message.reply_text('Door opened')
 
+
 def error(bot, update, error):
     """Log Errors caused by Updates."""
+    logger = _Logger.instance()
     logger.warning('Update "%s" caused error "%s"', update, error)
 
 
@@ -87,7 +111,6 @@ def main():
     with open(LIMITED_ACCESS_USER_IDS_FILE) as f:
         data = json.load(f)
         LIMITED_ACCESS_USER_IDS = data["ids"]
-
     """Start the bot."""
     # Create the EventHandler and pass it your bot's token.
     updater = Updater(sys.argv[1])
@@ -98,7 +121,9 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("open_door", open_door))
-    dp.add_handler(CommandHandler("get_temperature_and_humidity", get_temperature_and_humidity))
+    dp.add_handler(
+        CommandHandler("get_temperature_and_humidity",
+                       get_temperature_and_humidity))
 
     # log all errors
     dp.add_error_handler(error)
