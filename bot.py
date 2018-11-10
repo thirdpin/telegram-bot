@@ -14,11 +14,23 @@ BAUDRATE = 115200
 TIMEOUT = 3
 PARITY = 'N'
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+## --> Enable logging
+__formatter = logging.Formatter(
+    '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
+
+__ch = logging.StreamHandler()
+__ch.setFormatter(__formatter)
+__ch.setLevel(logging.INFO)
+
+__fh = RotatingFileHandler("log.txt", maxBytes=1048576, backupCount=5)
+__fh.setFormatter(__formatter)
+__fh.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
+logger.addHandler(__fh)
+logger.addHandler(__ch)
+logger.setLevel(logging.DEBUG)
+## <--
 
 LIMITED_ACCESS_USER_IDS = []
 LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
