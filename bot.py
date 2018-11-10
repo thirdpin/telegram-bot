@@ -20,7 +20,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 LIMITED_ACCESS_USER_IDS = (
-    73539646
+    73539646,
 )
 
 def start(bot, update):
