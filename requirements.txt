@@ -1,1 +1,2 @@
 minimalmodbus
+python-telegram-bot

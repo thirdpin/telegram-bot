@@ -3,4 +3,4 @@ import logging
 import sys
 from stuff.common import DoorOpener
 
-return True
+sys.stdout("Done")
