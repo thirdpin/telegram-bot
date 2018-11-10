@@ -42,6 +42,7 @@ def get_temperature_and_humidity(bot, update):
 
 
 def open_door(bot, update):
+    global LIMITED_ACCESS_USER_IDS
     if update.message.chat.id not in LIMITED_ACCESS_USER_IDS:
         update.message.reply_text('Sorry, but this function is not '
                                   'avaliable for you, pal.')
@@ -69,6 +70,7 @@ def main():
     minimalmodbus.TIMEOUT = TIMEOUT
     minimalmodbus.PARITY = PARITY
 
+    global LIMITED_ACCESS_USER_IDS
     with open(LIMITED_ACCESS_USER_IDS_FILE) as f:
         data = json.load(f)
         LIMITED_ACCESS_USER_IDS = data["ids"]
