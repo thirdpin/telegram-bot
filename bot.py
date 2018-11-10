@@ -103,6 +103,8 @@ def error(bot, update, error):
 
 
 def main():
+    """Start the bot."""
+
     minimalmodbus.BAUDRATE = BAUDRATE
     minimalmodbus.TIMEOUT = TIMEOUT
     minimalmodbus.PARITY = PARITY
@@ -111,7 +113,7 @@ def main():
     with open(LIMITED_ACCESS_USER_IDS_FILE) as f:
         data = json.load(f)
         LIMITED_ACCESS_USER_IDS = data["ids"]
-    """Start the bot."""
+
     # Create the EventHandler and pass it your bot's token.
     updater = Updater(sys.argv[1])
 
