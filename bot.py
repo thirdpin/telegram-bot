@@ -4,6 +4,7 @@
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram import ChatAction, ReplyKeyboardMarkup
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 from stuff.common import DoorOpener
 from stuff.ivitmrs import IvitMRS, _find_device
