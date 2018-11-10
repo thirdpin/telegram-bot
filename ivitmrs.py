@@ -4,28 +4,33 @@ import minimalmodbus
 import serial.tools.list_ports
 from collections import namedtuple
 
-_is_logger_inited = False
-_logger_ch = None
 
-def _log(name):
-    global _logger_ch
-    global _is_logger_inited
+class _Logger():
+    def __init__(self):
+        if not _Logger.is_inited:
+            _logger_formatter = logging.Formatter(
+                '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
 
-    if not _is_logger_inited:
-        _logger_formatter = logging.Formatter(
-            '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
+            _logger_ch = logging.StreamHandler()
+            _logger_ch.setFormatter(_logger_formatter)
+            _logger_ch.setLevel(logging.DEBUG)
 
-        _logger_ch = logging.StreamHandler()
-        _logger_ch.setFormatter(_logger_formatter)
-        _logger_ch.setLevel(logging.DEBUG)
-        _is_logger_inited = True
+            self._logger = logging.getLogger(__name__)
+            self._logger.setLevel(logging.DEBUG)
+            self._logger.addHandler(_logger_ch)
 
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    if not logger.hasHandlers():
-        logger.addHandler(_logger_ch)
+            _Logger.is_inited = True
+        else:
+            self._logger = logging.getLogger(__name__)
 
-    return logger
+    @property
+    def logger(self):
+        return self._logger
+
+    def instance():
+        return _Logger()._logger
+
+    is_inited = False
 
 
 Register = namedtuple(
@@ -103,35 +108,35 @@ class IvitMRS(object):
         return self.read_reg(REGS.temp_no_adjustment)
 
     def poll_sesors_and_print(self):
-        _log(__name__).info(
+        log = _Logger.instance()
+        log.info(
             '%s:   %.1f%s\t' % (REGS.temp.name, self.temp, REGS.temp.unit))
-        _log(__name__).info(
-            '%s:   %.1f%s\t' % (REGS.temp_sht.name, self.temp_sht,
-                                REGS.temp_sht.unit))
-        _log(__name__).info('%s:   %.1f%s\t' % (REGS.temp_no_correction.name,
-                                                self.temp_no_correction,
-                                                REGS.temp_no_correction.unit))
-        _log(__name__).info('%s:   %.1f%s\t' % (REGS.temp_no_adjustment.name,
-                                                self.temp_no_adjustment,
-                                                REGS.temp_no_adjustment.unit))
-        _log(__name__).info(
-            '%s:   %.1f%s\t' % (REGS.humidity.name, self.humidity,
-                                REGS.humidity.unit))
-        _log(__name__).info('%s:   %.1f%s\t' %
-                            (REGS.humidity_no_adjustment.name,
-                             self.humidity_no_adjustment, REGS.humidity.unit))
-        _log(__name__).info('%s:   %.1f%s\t' %
-                            (REGS.humidity_no_correction.name,
-                             self.humidity_no_correction, REGS.humidity.unit))
-        _log(__name__).info('\n')
+        log.info('%s:   %.1f%s\t' % (REGS.temp_sht.name, self.temp_sht,
+                                     REGS.temp_sht.unit))
+        log.info('%s:   %.1f%s\t' %
+                 (REGS.temp_no_correction.name, self.temp_no_correction,
+                  REGS.temp_no_correction.unit))
+        log.info('%s:   %.1f%s\t' %
+                 (REGS.temp_no_adjustment.name, self.temp_no_adjustment,
+                  REGS.temp_no_adjustment.unit))
+        log.info('%s:   %.1f%s\t' % (REGS.humidity.name, self.humidity,
+                                     REGS.humidity.unit))
+        log.info('%s:   %.1f%s\t' %
+                 (REGS.humidity_no_adjustment.name,
+                  self.humidity_no_adjustment, REGS.humidity.unit))
+        log.info('%s:   %.1f%s\t' %
+                 (REGS.humidity_no_correction.name,
+                  self.humidity_no_correction, REGS.humidity.unit))
+        log.info('\n')
 
 
 def _find_device(vid, pid):
+    log = _Logger.instance()
     for p in list(serial.tools.list_ports.comports()):
         if (p.vid == vid) and (p.pid == pid):
-            _log(__name__).info("Device found!")
+            log.info("Device found!")
             return p
-    _log(__name__).error("Device not found!")
+    log.error("Device not found!")
     return None
 
 
