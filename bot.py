@@ -19,9 +19,13 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+LIMITED_ACCESS_USER_IDS = (
+    73539646
+)
+
 def start(bot, update):
     """Send a message when the command /start is issued."""
-    
+
     custom_keyboard = [["/open_door"],["/get_temperature_and_humidity"]]
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
     update.message.reply_text('Hi!', reply_markup=reply_markup)
@@ -30,13 +34,21 @@ def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: %s. Humidity: %s' % (float("%0.1f" % ivt_mrs.temp), 
+        msg = 'Temperature: %s. Humidity: %s' % (float("%0.1f" % ivt_mrs.temp),
                                                  float("%0.1f" % ivt_mrs.humidity))
         update.message.reply_text(msg)
     else:
         update.message.reply_text('Something goes wrong!')
 
+
 def open_door(bot, update):
+    if update.message.chat.id not in LIMITED_ACCESS_USER_IDS:
+        update.message.reply_text('Sorry, but this function is not '
+                                  'avaliable for you, pal.')
+        logger.warn('An attempt of restricted access, user {}'.format(
+            update.message.chat.id))
+        return
+
     update.message.reply_text('Opening door...')
     SPIDER_ID = 1
     device = DoorOpener(SPIDER_ID)
