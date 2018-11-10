@@ -9,6 +9,7 @@ import sys
 from stuff.common import DoorOpener
 from stuff import ivitmrs
 from stuff.ivitmrs import IvitMRS, _find_device
+from stuff.ivitmrs import REGS as IVIT_MRS_REGS
 import minimalmodbus
 import json
 
@@ -65,10 +66,10 @@ def get_temperature_and_humidity(bot, update):
     dev_handler = _find_device(0x0403, 0x6015)
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: {t:0.1f}C. '\
-              'Humidity: {h:0.1f}%'.format(
-            t=ivt_mrs.temp,
-            h=ivt_mrs.humidity)
+        msg = 'Temperature: {t:0.1f}{t_units:s}. '\
+              'Humidity: {h:0.1f}{h_units:s}'.format(
+            t=ivt_mrs.temp, t_units=IVIT_MRS_REGS.temp.unit,
+            h=ivt_mrs.humidity, h_units=IVIT_MRS_REGS.humidity.unit)
 
         update.message.reply_text(msg)
     else:
