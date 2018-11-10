@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
-from stuff.common import Device
+from stuff.common import DoorOpener
 
 
 SPIDER_ID = 1
 
-device = Device(SPIDER_ID)
-
+device = DoorOpener(SPIDER_ID)
 device.open()
 device.initialize()
+
 while True:
-	device.blink()
+	device.door_stuff()

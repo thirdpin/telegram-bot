@@ -22,7 +22,7 @@ class Logger():
         return self.logger
 
 
-class Device(object):
+class DoorOpener(object):
     def __init__(self, spider_id):
         self.logger = Logger().get_logger()
         self.device = self.get_device(spider_id)
@@ -55,28 +55,25 @@ class Device(object):
     def initialize(self):
         self.device.write_bit(0,1, functioncode=0x05)
         self.device.write_bit(1,1, functioncode=0x05)
-        self.device.write_bit(2,1, functioncode=0x05)
-        self.device.write_bit(3,1, functioncode=0x05)
-        self.device.write_bit(4,1, functioncode=0x05)
-        self.device.write_bit(5,1, functioncode=0x05)
-        self.device.write_bit(6,1, functioncode=0x05)
-        self.device.write_bit(7,1, functioncode=0x05)
 
-    def blink(self):
-        self.device.write_bit(8,1, functioncode=0x05)
-        self.device.write_bit(9,1, functioncode=0x05)
-        self.device.write_bit(10,1, functioncode=0x05)
-        self.device.write_bit(11,1, functioncode=0x05)
-        self.device.write_bit(12,1, functioncode=0x05)
-        self.device.write_bit(13,1, functioncode=0x05)
-        self.device.write_bit(14,1, functioncode=0x05)
-        self.device.write_bit(15,1, functioncode=0x05)
+    def door_stuff(self):
+        """Opens/closes the door and blinks traffic light.
+        """
+        self._traffic_light_on()
+        self._open_door()
         time.sleep(1)
+        self._close_door()
+        time.sleep(3)
+        self._traffic_light_off()
+
+    def _open_door(self):
+        self.device.write_bit(8,1, functioncode=0x05)
+
+    def _close_door(self):
         self.device.write_bit(8,0, functioncode=0x05)
+
+    def _traffic_light_on(self):
+        self.device.write_bit(9,1, functioncode=0x05)
+
+    def _traffic_light_off(self):
         self.device.write_bit(9,0, functioncode=0x05)
-        self.device.write_bit(10,0, functioncode=0x05)
-        self.device.write_bit(11,0, functioncode=0x05)
-        self.device.write_bit(12,0, functioncode=0x05)
-        self.device.write_bit(13,0, functioncode=0x05)
-        self.device.write_bit(14,0, functioncode=0x05)
-        self.device.write_bit(15,0, functioncode=0x05)
