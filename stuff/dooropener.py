@@ -2,25 +2,12 @@
 
 import minimalmodbus
 import serial.tools.list_ports
-import time
-import logging
 
-
-class Logger():
-    def __init__(self):
-        # Enable logging
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                            level=logging.INFO)
-
-        self.logger = logging.getLogger(__name__)
-
-    def get_logger(self):
-        return self.logger
-
+from .common import Logger
 
 class DoorOpener(object):
     def __init__(self, spider_id):
-        self.logger = Logger().get_logger()
+        self.logger = Logger.for_name(__name__)
         self.device = self.get_device(spider_id)
 
     def get_device(self, spider_id):

@@ -1,37 +1,7 @@
-import time
-import logging
 import minimalmodbus
 import serial.tools.list_ports
 from collections import namedtuple
-
-
-class _Logger():
-    def __init__(self):
-        if not _Logger.is_inited:
-            _logger_formatter = logging.Formatter(
-                '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
-
-            _logger_ch = logging.StreamHandler()
-            _logger_ch.setFormatter(_logger_formatter)
-            _logger_ch.setLevel(logging.DEBUG)
-
-            self._logger = logging.getLogger(__name__)
-            self._logger.setLevel(logging.DEBUG)
-            self._logger.addHandler(_logger_ch)
-
-            _Logger.is_inited = True
-        else:
-            self._logger = logging.getLogger(__name__)
-
-    @property
-    def logger(self):
-        return self._logger
-
-    def instance():
-        return _Logger()._logger
-
-    is_inited = False
-
+from .common import find_device, Logger
 
 Register = namedtuple(
     'Register', ['name', 'addr', 'reg_type', 'count', 'value_type', 'unit'])
@@ -56,28 +26,14 @@ REGS = IvitMRSRegs(
 )
 
 
-def _find_device(vid, pid):
-    log = _Logger.instance()
-    for p in list(serial.tools.list_ports.comports()):
-        if (p.vid == vid) and (p.pid == pid):
-            log.info("Device found!")
-            return p
-    log.error("Device not found!")
-    raise IvitMRSNotFound(
-        "Not found any devices with VID:PID = {vid}:{pid}".format(**locals()))
-
-
-class IvitMRSNotFound(IOError):
-    pass
-
 class IvitMRS(object):
     @classmethod
     def from_vid_pid(cls, vip, pid, dev_addr=247):
-        dev = _find_device(vip, pid)
+        dev = find_device(vip, pid)
         return cls(dev.device, dev_addr)
 
     def __init__(self, port, dev_addr=247):
-        log = _Logger.instance()
+        log = Logger.for_name(__name__)
 
         try:
             self._mb = minimalmodbus.Instrument(str(port), dev_addr, mode='rtu')
@@ -120,7 +76,8 @@ class IvitMRS(object):
         return self.read_reg(REGS.temp_no_adjustment)
 
     def poll_sesors_and_print(self):
-        log = _Logger.instance()
+        log = Logger.for_name(__name__)
+
         log.info(
             '%s:   %.1f%s\t' % (REGS.temp.name, self.temp, REGS.temp.unit))
         log.info('%s:   %.1f%s\t' % (REGS.temp_sht.name, self.temp_sht,
@@ -143,11 +100,11 @@ class IvitMRS(object):
 
 
 if __name__ == "__main__":
-    dev_handler = _find_device(0x0403, 0x6015)
-    # Restore an old glob MB settings
     minimalmodbus.BAUDRATE = 9600
     minimalmodbus.TIMEOUT = 1
     minimalmodbus.PARITY = 'E'
+
+    dev_handler = find_device(0x0403, 0x6015)
 
     if dev_handler:
         ivt_mrs = IvitMRS(dev_handler.device)

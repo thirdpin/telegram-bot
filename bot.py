@@ -13,13 +13,13 @@ from logging.handlers import RotatingFileHandler
 
 from stuff.dooropener import DoorOpener
 from stuff import ivitmrs
-from stuff.ivitmrs import IvitMRS, _find_device
+from stuff.ivitmrs import IvitMRS
 from stuff.ivitmrs import REGS as IVIT_MRS_REGS
 
 
-class _Logger():
+class _BotLogger():
     def __init__(self):
-        if not _Logger.is_inited:
+        if not _BotLogger.is_inited:
             __formatter = logging.Formatter(
                 '%(asctime)s_%(name)s_%(levelname)s: %(message)s')
 
@@ -37,7 +37,7 @@ class _Logger():
             self._logger.addHandler(__ch)
             self._logger.setLevel(logging.DEBUG)
 
-            _Logger.is_inited = True
+            _BotLogger.is_inited = True
         else:
             self._logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class _Logger():
         return self._logger
 
     def instance():
-        return _Logger()._logger
+        return _BotLogger()._logger
 
     is_inited = False
 
@@ -76,7 +76,7 @@ class Bot(object):
         def __init__(self, full_access_ids_file, mb_baudrate, mb_parity,
                      mb_timeout):
             self._full_access_users = list()
-            self._log = _Logger.instance()
+            self._log = _BotLogger.instance()
             self._ivt_mrs = IvitMRS.from_vid_pid(0x0403, 0x6015)
 
             try:
@@ -139,13 +139,13 @@ class Bot(object):
                 self._log.warn(
                     'An attempt of a restricted access, user {}'.format(user_id))
                 return False
-            else
+            else:
                 return True
 
 
 def main():
     """Start the bot."""
-    log = _Logger.instance()
+    log = _BotLogger.instance()
 
     # Make a bot instance
     try:

@@ -1,0 +1,2 @@
+class ComDeviceNotFound(IOError):
+    pass
