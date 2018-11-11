@@ -3,7 +3,7 @@
 import minimalmodbus
 import serial.tools.list_ports
 
-from .common import Logger
+from .common import Logger, find_device
 
 class DoorOpener(object):
     def __init__(self, spider_id):
@@ -11,15 +11,15 @@ class DoorOpener(object):
         self.device = self.get_device(spider_id)
 
     def get_device(self, spider_id):
-        for port in list(serial.tools.list_ports.comports()):
-            if (port.vid == 0x0403) and (port.pid == 0x6015):
-                device = minimalmodbus.Instrument(str(port.device),
-                                                  spider_id,
-                                                  mode='rtu')
-                self.logger.info('Found device {device} '
-                                 'with ID {id}'.format(device=str(port.device),
-                                                       id=spider_id))
-                return device
+        com = find_device(0x0403, 0x6015)
+
+        device = minimalmodbus.Instrument(
+            str(com.device), spider_id, mode='rtu')
+
+        self.logger.info('Found device {device} '
+                         'with ID {id}'.format(
+                             device=str(port.device), id=spider_id))
+        return device
 
     def open(self):
         if not self.device.serial.is_open:
