@@ -13,18 +13,17 @@ LOGGER_DEFAULTS = LoggerDefaults(
 
 class _Logger():
     def __init__(self, name):
-        if not _Logger.is_inited:
-            _logger_formatter = logging.Formatter(LOGGER_DEFAULTS.str_format)
+        self._logger = logging.getLogger(name)
+        if not self._logger.hasHandlers():
+            self._logger_formatter = logging.Formatter(LOGGER_DEFAULTS.str_format)
 
-            _logger_ch = logging.StreamHandler()
-            _logger_ch.setFormatter(_logger_formatter)
-            _logger_ch.setLevel(LOGGER_DEFAULTS.logger_level)
+            self._logger_ch = logging.StreamHandler()
+            self._logger_ch.setFormatter(self._logger_formatter)
+            self._logger_ch.setLevel(LOGGER_DEFAULTS.logger_level)
 
             self._logger = logging.getLogger(name)
-            self._logger.setLevel(logging.DEBUG)
-            self._logger.addHandler(_logger_ch)
-
-            _Logger.is_inited = True
+            self._logger.setLevel(LOGGER_DEFAULTS.logger_level)
+            self._logger.addHandler(self._logger_ch)
         else:
             self._logger = logging.getLogger(name)
 
@@ -49,7 +48,8 @@ def find_device(vid, pid):
 
     for p in list(serial.tools.list_ports.comports()):
         if (p.vid == vid) and (p.pid == pid):
-            log.info("Device found!")
+            log.info("Device {vid}:{pid} found: {com}!".format(
+                vid=vid, pid=pid, com=p.device))
             return p
     log.error("Device not found!")
     raise ComDeviceNotFound(

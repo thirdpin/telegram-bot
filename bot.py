@@ -3,7 +3,7 @@
 
 import sys
 import json
-from collections import namedtuple
+import time
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram import ChatAction, ReplyKeyboardMarkup
@@ -11,10 +11,11 @@ from telegram import ChatAction, ReplyKeyboardMarkup
 import logging
 from logging.handlers import RotatingFileHandler
 
-from stuff.dooropener import DoorOpener
-from stuff import ivitmrs
-from stuff.ivitmrs import IvitMRS
-from stuff.ivitmrs import REGS as IVIT_MRS_REGS
+from mbdevs.dooropener import DoorOpener
+from mbdevs.trafflight import TrafficLight
+from mbdevs import ivitmrs
+from mbdevs.ivitmrs import IvitMRS
+from mbdevs.ivitmrs import REGS as IVIT_MRS_REGS
 
 
 class _BotLogger():
@@ -51,33 +52,25 @@ class _BotLogger():
     is_inited = False
 
 
-BotDefaults = namedtuple(
-    "BotDefaults",
-    ["MB_BAUDRATE", "MB_PARITY", "MB_TIMEOUT", "FULL_ACCESS_USER_IDS_FILE"])
-
-_BOT_DEFAULTS = BotDefaults(
-    MB_BAUDRATE=115200,
-    MB_PARITY='N',
-    MB_TIMEOUT=3,
-    FULL_ACCESS_USER_IDS_FILE="ids.json")
+FULL_ACCESS_USER_IDS_FILE = "ids.json"
 
 
 class Bot(object):
     @classmethod
-    def make_bot(cls,
-                 full_access_ids_file=_BOT_DEFAULTS.FULL_ACCESS_USER_IDS_FILE,
-                 mb_baudrate=_BOT_DEFAULTS.MB_BAUDRATE,
-                 mb_parity=_BOT_DEFAULTS.MB_PARITY,
-                 mb_timeout=_BOT_DEFAULTS.MB_TIMEOUT):
-        return cls._BotImpl(full_access_ids_file, mb_baudrate, mb_parity,
-                            mb_timeout)
+    def make_bot(
+            cls,
+            full_access_ids_file=FULL_ACCESS_USER_IDS_FILE,
+    ):
+        log = _BotLogger.instance()
+        return cls._BotImpl(full_access_ids_file)
 
     class _BotImpl(object):
-        def __init__(self, full_access_ids_file, mb_baudrate, mb_parity,
-                     mb_timeout):
+        def __init__(self, full_access_ids_file):
             self._full_access_users = list()
             self._log = _BotLogger.instance()
             self._ivt_mrs = IvitMRS.from_vid_pid(0x0403, 0x6015)
+            self._door = DoorOpener.from_vid_pid(0x0403, 0x6015)
+            self._trafflight = TrafficLight.from_vid_pid(0x0403, 0x6015)
 
             try:
                 with open(full_access_ids_file) as f:
@@ -88,11 +81,6 @@ class Bot(object):
                         full_access_ids_file))
                 raise e
 
-            import minimalmodbus
-            minimalmodbus.BAUDRATE = mb_baudrate
-            minimalmodbus.TIMEOUT = mb_timeout
-            minimalmodbus.PARITY = mb_parity
-
         def start(self, bot, update):
             """Send a message when the command /start is issued."""
 
@@ -101,6 +89,18 @@ class Bot(object):
             reply_markup = ReplyKeyboardMarkup(
                 custom_keyboard, resize_keyboard=True)
             update.message.reply_text('Hi!', reply_markup=reply_markup)
+
+        def _traffic_light(self):
+            '''Just for lulz aka test'''
+
+            self._trafflight.sequence(
+                0.1, TrafficLight.Color.GREEN, TrafficLight.Color.YELLOW,
+                TrafficLight.Color.RED, TrafficLight.Color.GREEN,
+                TrafficLight.Color.YELLOW, TrafficLight.Color.YELLOW,
+                TrafficLight.Color.GREEN, TrafficLight.Color.RED,
+                TrafficLight.Color.YELLOW, TrafficLight.Color.GREEN)
+
+            self._trafflight.all(TrafficLight.State.OFF)
 
         def get_temperature_and_humidity(self, bot, update):
             try:
@@ -112,21 +112,30 @@ class Bot(object):
                 update.message.reply_text(msg)
             except Exception as e:
                 self._log.error(
-                    "Error while connection with a temp sensor!", exc_info=True)
+                    "Error while connection with a temp sensor!",
+                    exc_info=True)
                 update.message.reply_text('Something goes wrong!')
+
+            self._traffic_light()
 
         def open_door(self, bot, update):
             if not self._check_user_access(update.message.chat.id):
                 return
 
+            self._log.info("User opening door: {}".format(
+                update.message.chat.id))
+
             update.message.reply_text('Opening the door...')
-            device = DoorOpener(spider_id=1)
-            device.open()
-            device.initialize()
-            if not device.door_stuff():
-                update.message.reply_text('Cannot open the door.')
-            else:
+            try:
+                self._trafflight.green(TrafficLight.State.ON)  # temp
+                self._door.open_door()
                 update.message.reply_text('The door was opened.')
+                self._trafflight.green(TrafficLight.State.OFF)  # temp
+            except Exception as e:
+                self._log.error(
+                    "Error while connection with a door opener!",
+                    exc_info=True)
+                update.message.reply_text('Cannot open the door.')
 
         def error(self, bot, update, error):
             """Log Errors caused by Updates."""
@@ -136,8 +145,8 @@ class Bot(object):
             if user_id not in self._full_access_users:
                 update.message.reply_text('Sorry, but this function is not '
                                           'avaliable for you, pal.')
-                self._log.warn(
-                    'An attempt of a restricted access, user {}'.format(user_id))
+                self._log.warn('An attempt of a restricted access, user {}'.
+                               format(user_id))
                 return False
             else:
                 return True
@@ -145,14 +154,14 @@ class Bot(object):
 
 def main():
     """Start the bot."""
+
     log = _BotLogger.instance()
 
     # Make a bot instance
     try:
         bot = Bot.make_bot()
     except Exception as e:
-        log.error(
-            "Can not create a bot instance:", exc_info=True)
+        log.error("Can not create a bot instance:", exc_info=True)
         raise e
 
     # Create the EventHandler and pass it your bot's token.
@@ -169,7 +178,7 @@ def main():
                        bot.get_temperature_and_humidity))
 
     # Log all errors
-    dp.add_error_handler(error)
+    dp.add_error_handler(bot.error)
 
     # Start the Bot
     updater.start_polling()

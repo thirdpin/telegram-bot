@@ -29,6 +29,7 @@ REGS = IvitMRSRegs(
 class IvitMRS(object):
     @classmethod
     def from_vid_pid(cls, vip, pid, dev_addr=247):
+        Logger.for_name(__name__).info("Device search...")
         dev = find_device(vip, pid)
         return cls(dev.device, dev_addr)
 
