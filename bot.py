@@ -10,15 +10,9 @@ from stuff.common import DoorOpener
 from stuff import ivitmrs
 from stuff.ivitmrs import IvitMRS, _find_device
 from stuff.ivitmrs import REGS as IVIT_MRS_REGS
-import minimalmodbus
 import json
+from collections import namedtuple
 
-BAUDRATE = 115200
-TIMEOUT = 3
-PARITY = 'N'
-
-LIMITED_ACCESS_USER_IDS = []
-LIMITED_ACCESS_USER_IDS_FILE = "ids.json"
 
 class _Logger():
     def __init__(self):
@@ -54,68 +48,92 @@ class _Logger():
     is_inited = False
 
 
-def start(bot, update):
-    """Send a message when the command /start is issued."""
+BotDefaults = namedtuple(
+    "BotDefaults",
+    ["MB_BAUDRATE", "MB_PARITY", "MB_TIMEOUT", "FULL_ACCESS_USER_IDS_FILE"])
 
-    custom_keyboard = [["/open_door"], ["/get_temperature_and_humidity"]]
-    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
-    update.message.reply_text('Hi!', reply_markup=reply_markup)
-
-
-def get_temperature_and_humidity(bot, update):
-    dev_handler = _find_device(0x0403, 0x6015)
-    if dev_handler:
-        ivt_mrs = IvitMRS(dev_handler.device)
-        msg = 'Temperature: {t:0.1f}{t_units:s}. '\
-              'Humidity: {h:0.1f}{h_units:s}'.format(
-            t=ivt_mrs.temp, t_units=IVIT_MRS_REGS.temp.unit,
-            h=ivt_mrs.humidity, h_units=IVIT_MRS_REGS.humidity.unit)
-
-        update.message.reply_text(msg)
-    else:
-        update.message.reply_text('Something goes wrong!')
+_BOT_DEFAULTS = BotDefaults(
+    MB_BAUDRATE=115200,
+    MB_PARITY='N',
+    MB_TIMEOUT=3,
+    FULL_ACCESS_USER_IDS_FILE="ids.json")
 
 
-def open_door(bot, update):
-    global LIMITED_ACCESS_USER_IDS
+class Bot(object):
+    @classmethod
+    def make_bot(cls,
+                 full_access_ids_file=_BOT_DEFAULTS.FULL_ACCESS_USER_IDS_FILE,
+                 mb_baudrate=_BOT_DEFAULTS.MB_BAUDRATE,
+                 mb_parity=_BOT_DEFAULTS.MB_PARITY,
+                 mb_timeout=_BOT_DEFAULTS.MB_TIMEOUT):
+        return cls._BotImpl(full_access_ids_file, mb_baudrate, mb_parity,
+                            mb_timeout)
 
-    logger = _Logger.instance()
+    class _BotImpl(object):
+        def __init__(self, full_access_ids_file, mb_baudrate, mb_parity,
+                     mb_timeout):
+            self._full_access_users = list()
+            self._log = _Logger.instance()
 
-    if update.message.chat.id not in LIMITED_ACCESS_USER_IDS:
-        update.message.reply_text('Sorry, but this function is not '
-                                  'avaliable for you, pal.')
-        logger.warn('An attempt of restricted access, user {}'.format(
-            update.message.chat.id))
-        return
+            with open(full_access_ids_file) as f:
+                self._full_access_users = json.load(f)["ids"]
 
-    update.message.reply_text('Opening door...')
-    SPIDER_ID = 1
-    device = DoorOpener(SPIDER_ID)
-    device.open()
-    device.initialize()
-    if not device.door_stuff():
-        update.message.reply_text('Cannot open door')
-    else:
-        update.message.reply_text('Door opened')
+            import minimalmodbus
+            minimalmodbus.BAUDRATE = mb_baudrate
+            minimalmodbus.TIMEOUT = mb_timeout
+            minimalmodbus.PARITY = mb_parity
 
+        def start(self, bot, update):
+            """Send a message when the command /start is issued."""
 
-def error(bot, update, error):
-    """Log Errors caused by Updates."""
-    logger = _Logger.instance()
-    logger.warning('Update "%s" caused error "%s"', update, error)
+            custom_keyboard = [["/open_door"],
+                               ["/get_temperature_and_humidity"]]
+            reply_markup = ReplyKeyboardMarkup(
+                custom_keyboard, resize_keyboard=True)
+            update.message.reply_text('Hi!', reply_markup=reply_markup)
+
+        def get_temperature_and_humidity(self, bot, update):
+            dev_handler = _find_device(0x0403, 0x6015)
+            if dev_handler:
+                ivt_mrs = IvitMRS(dev_handler.device)
+                msg = 'Temperature: {t:0.1f}{t_units:s}. '\
+                    'Humidity: {h:0.1f}{h_units:s}'.format(
+                    t=ivt_mrs.temp, t_units=IVIT_MRS_REGS.temp.unit,
+                    h=ivt_mrs.humidity, h_units=IVIT_MRS_REGS.humidity.unit)
+
+                update.message.reply_text(msg)
+            else:
+                update.message.reply_text('Something goes wrong!')
+
+        def open_door(self, bot, update):
+            if update.message.chat.id not in self._full_access_users:
+                update.message.reply_text('Sorry, but this function is not '
+                                          'avaliable for you, pal.')
+                self._log.warn(
+                    'An attempt of restricted access, user {}'.format(
+                        update.message.chat.id))
+                return
+
+            update.message.reply_text('Opening door...')
+            SPIDER_ID = 1
+            device = DoorOpener(SPIDER_ID)
+            device.open()
+            device.initialize()
+            if not device.door_stuff():
+                update.message.reply_text('Cannot open door')
+            else:
+                update.message.reply_text('Door opened')
+
+        def error(self, bot, update, error):
+            """Log Errors caused by Updates."""
+            self._log.warning('Update "%s" caused error "%s"', update, error)
 
 
 def main():
     """Start the bot."""
 
-    minimalmodbus.BAUDRATE = BAUDRATE
-    minimalmodbus.TIMEOUT = TIMEOUT
-    minimalmodbus.PARITY = PARITY
-
-    global LIMITED_ACCESS_USER_IDS
-    with open(LIMITED_ACCESS_USER_IDS_FILE) as f:
-        data = json.load(f)
-        LIMITED_ACCESS_USER_IDS = data["ids"]
+    # Make a bot instance
+    bot = Bot.make_bot()
 
     # Create the EventHandler and pass it your bot's token.
     updater = Updater(sys.argv[1])
@@ -123,14 +141,14 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    # on different commands - answer in Telegram
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("open_door", open_door))
+    # On different commands - answer in Telegram
+    dp.add_handler(CommandHandler("start", bot.start))
+    dp.add_handler(CommandHandler("open_door", bot.open_door))
     dp.add_handler(
         CommandHandler("get_temperature_and_humidity",
-                       get_temperature_and_humidity))
+                       bot.get_temperature_and_humidity))
 
-    # log all errors
+    # Log all errors
     dp.add_error_handler(error)
 
     # Start the Bot
