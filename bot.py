@@ -77,9 +77,16 @@ class Bot(object):
                      mb_timeout):
             self._full_access_users = list()
             self._log = _Logger.instance()
+            self._ivt_mrs = IvitMRS.from_vid_pid(0x0403, 0x6015)
 
-            with open(full_access_ids_file) as f:
-                self._full_access_users = json.load(f)["ids"]
+            try:
+                with open(full_access_ids_file) as f:
+                    self._full_access_users = json.load(f)["ids"]
+            except FileNotFoundError as e:
+                self._log.error(
+                    "File \"{}\" with full access IDs is not found!".format(
+                        full_access_ids_file))
+                raise e
 
             import minimalmodbus
             minimalmodbus.BAUDRATE = mb_baudrate
@@ -96,47 +103,57 @@ class Bot(object):
             update.message.reply_text('Hi!', reply_markup=reply_markup)
 
         def get_temperature_and_humidity(self, bot, update):
-            dev_handler = _find_device(0x0403, 0x6015)
-            if dev_handler:
-                ivt_mrs = IvitMRS(dev_handler.device)
+            try:
                 msg = 'Temperature: {t:0.1f}{t_units:s}. '\
-                    'Humidity: {h:0.1f}{h_units:s}'.format(
-                    t=ivt_mrs.temp, t_units=IVIT_MRS_REGS.temp.unit,
-                    h=ivt_mrs.humidity, h_units=IVIT_MRS_REGS.humidity.unit)
+                    'Humidity: {h:0.1f}{h_units:s}.'.format(
+                    t=self._ivt_mrs.temp, t_units=IVIT_MRS_REGS.temp.unit,
+                    h=self._ivt_mrs.humidity, h_units=IVIT_MRS_REGS.humidity.unit)
 
                 update.message.reply_text(msg)
-            else:
+            except Exception as e:
+                self._log.error(
+                    "Error while connection with a temp sensor!", exc_info=True)
                 update.message.reply_text('Something goes wrong!')
 
         def open_door(self, bot, update):
-            if update.message.chat.id not in self._full_access_users:
-                update.message.reply_text('Sorry, but this function is not '
-                                          'avaliable for you, pal.')
-                self._log.warn(
-                    'An attempt of restricted access, user {}'.format(
-                        update.message.chat.id))
+            if not self._check_user_access(update.message.chat.id):
                 return
 
-            update.message.reply_text('Opening door...')
-            SPIDER_ID = 1
-            device = DoorOpener(SPIDER_ID)
+            update.message.reply_text('Opening the door...')
+            device = DoorOpener(spider_id=1)
             device.open()
             device.initialize()
             if not device.door_stuff():
-                update.message.reply_text('Cannot open door')
+                update.message.reply_text('Cannot open the door.')
             else:
-                update.message.reply_text('Door opened')
+                update.message.reply_text('The door was opened.')
 
         def error(self, bot, update, error):
             """Log Errors caused by Updates."""
             self._log.warning('Update "%s" caused error "%s"', update, error)
 
+        def _check_user_access(self, user_id):
+            if user_id not in self._full_access_users:
+                update.message.reply_text('Sorry, but this function is not '
+                                          'avaliable for you, pal.')
+                self._log.warn(
+                    'An attempt of a restricted access, user {}'.format(user_id))
+                return False
+            else
+                return True
+
 
 def main():
     """Start the bot."""
+    log = _Logger.instance()
 
     # Make a bot instance
-    bot = Bot.make_bot()
+    try:
+        bot = Bot.make_bot()
+    except Exception as e:
+        log.error(
+            "Can not create a bot instance:", exc_info=True)
+        raise e
 
     # Create the EventHandler and pass it your bot's token.
     updater = Updater(sys.argv[1])
