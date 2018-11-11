@@ -56,7 +56,26 @@ REGS = IvitMRSRegs(
 )
 
 
+def _find_device(vid, pid):
+    log = _Logger.instance()
+    for p in list(serial.tools.list_ports.comports()):
+        if (p.vid == vid) and (p.pid == pid):
+            log.info("Device found!")
+            return p
+    log.error("Device not found!")
+    raise IvitMRSNotFound(
+        "Not found any devices with VID:PID = {vid}:{pid}".format(**locals()))
+
+
+class IvitMRSNotFound(IOError):
+    pass
+
 class IvitMRS(object):
+    @classmethod
+    def from_vid_pid(cls, vip, pid, dev_addr=247):
+        dev = _find_device(vip, pid)
+        return cls(dev.device, dev_addr)
+
     def __init__(self, port, dev_addr=247):
         log = _Logger.instance()
 
@@ -121,16 +140,6 @@ class IvitMRS(object):
                  (REGS.humidity_no_correction.name,
                   self.humidity_no_correction, REGS.humidity.unit))
         log.info('\n')
-
-
-def _find_device(vid, pid):
-    log = _Logger.instance()
-    for p in list(serial.tools.list_ports.comports()):
-        if (p.vid == vid) and (p.pid == pid):
-            log.info("Device found!")
-            return p
-    log.error("Device not found!")
-    return None
 
 
 if __name__ == "__main__":
