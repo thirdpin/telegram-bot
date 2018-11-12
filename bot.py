@@ -119,11 +119,11 @@ class Bot(object):
             self._traffic_light()
 
         def open_door(self, bot, update):
-            if not self._check_user_access(update.message.chat.id):
-                return
-
             self._log.info("User opening door: {}".format(
                 update.message.chat.id))
+
+            if not self._check_user_access(update):
+                return
 
             update.message.reply_text('Opening the door...')
             try:
@@ -141,12 +141,12 @@ class Bot(object):
             """Log Errors caused by Updates."""
             self._log.warning('Update "%s" caused error "%s"', update, error)
 
-        def _check_user_access(self, user_id):
-            if user_id not in self._full_access_users:
+        def _check_user_access(self, update):
+            if update.message.chat.id not in self._full_access_users:
                 update.message.reply_text('Sorry, but this function is not '
                                           'avaliable for you, pal.')
                 self._log.warn('An attempt of a restricted access, user {}'.
-                               format(user_id))
+                               format(update.message.chat.id))
                 return False
             else:
                 return True
