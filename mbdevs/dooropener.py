@@ -3,11 +3,11 @@
 import time
 import minimalmodbus
 import serial.tools.list_ports
-from pykka import ThreadingActor
 import threading
 
 from enum import Enum
 from collections import namedtuple
+from pykka import ThreadingActor
 from .common import Logger, find_device
 from .exceptions import CannotReadARegisterValue
 from .modbus import FunctionalCodes, Register, Modbus, ModbusUser

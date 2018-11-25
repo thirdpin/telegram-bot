@@ -4,7 +4,6 @@ from collections import namedtuple
 
 from .common import find_device, Logger
 from .modbus import FunctionalCodes, Register, Modbus, Action, ModbusUser
-from .exceptions import CannotReadARegisterValue
 
 IvitMRSRegs = namedtuple('IvitMRSRegs', [
     'humidity', 'humidity_no_correction', 'humidity_no_adjustment', 'temp',

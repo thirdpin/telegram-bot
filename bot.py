@@ -94,14 +94,23 @@ class Bot(object):
         def _traffic_light(self):
             '''Just for lulz aka test'''
 
-            self._trafflight.sequence(
-                0.1, TrafficLight.Color.GREEN, TrafficLight.Color.YELLOW,
-                TrafficLight.Color.RED, TrafficLight.Color.GREEN,
-                TrafficLight.Color.YELLOW, TrafficLight.Color.YELLOW,
-                TrafficLight.Color.GREEN, TrafficLight.Color.RED,
-                TrafficLight.Color.YELLOW, TrafficLight.Color.GREEN)
+            self._trafflight.tell({
+                "action":
+                TrafficLight.Action.SEQUENCE,
+                "sleep_time":
+                0.1,
+                "colors":
+                (TrafficLight.Color.GREEN, TrafficLight.Color.YELLOW,
+                 TrafficLight.Color.RED, TrafficLight.Color.GREEN,
+                 TrafficLight.Color.YELLOW, TrafficLight.Color.YELLOW,
+                 TrafficLight.Color.GREEN, TrafficLight.Color.RED,
+                 TrafficLight.Color.YELLOW, TrafficLight.Color.GREEN)
+            })
 
-            self._trafflight.all(TrafficLight.State.OFF)
+            self._trafflight.tell({
+                "action": TrafficLight.Action.OFF,
+                "color": TrafficLight.Color.ALL
+            })
 
         def get_temperature_and_humidity(self, bot, update):
             try:
@@ -128,15 +137,21 @@ class Bot(object):
 
             update.message.reply_text('Opening the door...')
             try:
-                self._trafflight.green(TrafficLight.State.ON)  # temp
-
-                not_is_opened = self._door.ask({"action" : DoorAction.OPEN})
+                not_is_opened = self._door.ask({"action": DoorAction.OPEN})
                 if not_is_opened:
                     update.message.reply_text('The door was opened.')
+                    self._trafflight.tell({
+                        "action":
+                        TrafficLight.Action.SEQUENCE,
+                        "sleep_time":
+                        0.5,
+                        "colors":
+                        (TrafficLight.Color.GREEN, TrafficLight.Color.GREEN,
+                        TrafficLight.Color.GREEN, TrafficLight.Color.GREEN,
+                        TrafficLight.Color.GREEN, TrafficLight.Color.GREEN)
+                    })
                 else:
                     update.message.reply_text('The door is already opened.')
-
-                self._trafflight.green(TrafficLight.State.OFF)  # temp
             except Exception as e:
                 self._log.error(
                     "Error while connection with a door opener!",
@@ -151,8 +166,9 @@ class Bot(object):
             if update.message.chat.id not in self._full_access_users:
                 update.message.reply_text('Sorry, but this function is not '
                                           'avaliable for you, pal.')
-                self._log.warn('An attempt of a restricted access, user {}'.
-                               format(update.message.chat.id))
+                self._log.warn(
+                    'An attempt of a restricted access, user {}'.format(
+                        update.message.chat.id))
                 return False
             else:
                 return True
