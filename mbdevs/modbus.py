@@ -47,7 +47,6 @@ class Modbus(pykka.ThreadingActor):
                 return self._write(msg["reg"], msg["value"])
 
     def _read(self, reg):
-        self._log.info("Read register: {}".format(reg.name))
         try:
             if reg.func_code == FunctionalCodes.COIL:
                 return bool(
@@ -70,7 +69,6 @@ class Modbus(pykka.ThreadingActor):
             return None
 
     def _write(self, reg, val):
-        self._log.info("Write register: {}".format(reg.name))
         try:
             if reg.func_code == FunctionalCodes.COIL:
                 self._mb.write_bit(reg.addr, val, reg.func_code.value.write)
