@@ -11,7 +11,8 @@ from telegram import ChatAction, ReplyKeyboardMarkup
 import logging
 from logging.handlers import RotatingFileHandler
 
-from mbdevs.dooropener import DoorOpener
+from mbdevs.dooropener import DoorOpener, Action
+from mbdevs.dooropener import Action as DoorAction
 from mbdevs.trafflight import TrafficLight
 from mbdevs import ivitmrs
 from mbdevs.ivitmrs import IvitMRS
@@ -128,8 +129,13 @@ class Bot(object):
             update.message.reply_text('Opening the door...')
             try:
                 self._trafflight.green(TrafficLight.State.ON)  # temp
-                self._door.open_door()
-                update.message.reply_text('The door was opened.')
+
+                not_is_opened = self._door.ask({"action" : DoorAction.OPEN})
+                if not_is_opened:
+                    update.message.reply_text('The door was opened.')
+                else:
+                    update.message.reply_text('The door is already opened.')
+
                 self._trafflight.green(TrafficLight.State.OFF)  # temp
             except Exception as e:
                 self._log.error(

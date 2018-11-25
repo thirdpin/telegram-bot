@@ -1,10 +1,10 @@
 import minimalmodbus
 import serial.tools.list_ports
 from collections import namedtuple
-from .common import find_device, Logger
 
-Register = namedtuple(
-    'Register', ['name', 'addr', 'reg_type', 'count', 'value_type', 'unit'])
+from .common import find_device, Logger
+from .modbus import FunctionalCodes, Register, Modbus, Action, ModbusUser
+from .exceptions import CannotReadARegisterValue
 
 IvitMRSRegs = namedtuple('IvitMRSRegs', [
     'humidity', 'humidity_no_correction', 'humidity_no_adjustment', 'temp',
@@ -12,21 +12,25 @@ IvitMRSRegs = namedtuple('IvitMRSRegs', [
 ])
 
 REGS = IvitMRSRegs(
-    humidity=Register("Relative humidity", 0x0016, 0x04, 2, float, '%'),
+    humidity=Register("Relative humidity", 0x0016, FunctionalCodes.INPUT, 2,
+                      float, '%'),
     humidity_no_correction=Register("Relative humidity (no correction)",
-                                    0x0014, 0x04, 2, float, '%'),
+                                    0x0014, FunctionalCodes.INPUT, 2, float,
+                                    '%'),
     humidity_no_adjustment=Register("Relative humidity (no adjustment)",
-                                    0x0012, 0x04, 2, float, '%'),
-    temp=Register("Temperature", 0x0022, 0x04, 2, float, 'C'),
-    temp_sht=Register("Temperature SHT", 0x0034, 0x04, 2, float, 'C'),
-    temp_no_correction=Register("Temperature (no correction)", 0x0020, 0x04, 2,
-                                float, 'C'),
-    temp_no_adjustment=Register("Temperature (no adjustment)", 0x0018, 0x04, 2,
-                                float, 'C'),
+                                    0x0012, FunctionalCodes.INPUT, 2, float,
+                                    '%'),
+    temp=Register("Temperature", 0x0022, FunctionalCodes.INPUT, 2, float, 'C'),
+    temp_sht=Register("Temperature SHT", 0x0034, FunctionalCodes.INPUT, 2,
+                      float, 'C'),
+    temp_no_correction=Register("Temperature (no correction)", 0x0020,
+                                FunctionalCodes.INPUT, 2, float, 'C'),
+    temp_no_adjustment=Register("Temperature (no adjustment)", 0x0018,
+                                FunctionalCodes.INPUT, 2, float, 'C'),
 )
 
 
-class IvitMRS(object):
+class IvitMRS(ModbusUser):
     @classmethod
     def from_vid_pid(cls, vip, pid, dev_addr=247):
         Logger.for_name(__name__).info("Device search...")
@@ -37,44 +41,40 @@ class IvitMRS(object):
         log = Logger.for_name(__name__)
 
         try:
-            self._mb = minimalmodbus.Instrument(str(port), dev_addr, mode='rtu')
+            self._mb = minimalmodbus.Instrument(
+                str(port), dev_addr, mode='rtu')
+            super().__init__(self._mb)
         except Exception as e:
             log.error(str(e), exc_info=True)
             raise e
 
-        self._dev_addr = dev_addr
-
-    def read_reg(self, reg):
-        return reg.value_type(
-            self._mb.read_float(reg.addr, reg.reg_type, reg.count))
-
     @property
     def humidity(self):
-        return self.read_reg(REGS.humidity)
+        return self._read_reg(REGS.humidity)
 
     @property
     def humidity_no_correction(self):
-        return self.read_reg(REGS.humidity_no_correction)
+        return self._read_reg(REGS.humidity_no_correction)
 
     @property
     def humidity_no_adjustment(self):
-        return self.read_reg(REGS.humidity_no_adjustment)
+        return self._read_reg(REGS.humidity_no_adjustment)
 
     @property
     def temp(self):
-        return self.read_reg(REGS.temp)
+        return self._read_reg(REGS.temp)
 
     @property
     def temp_sht(self):
-        return self.read_reg(REGS.temp_sht)
+        return self._read_reg(REGS.temp_sht)
 
     @property
     def temp_no_correction(self):
-        return self.read_reg(REGS.temp_no_correction)
+        return self._read_reg(REGS.temp_no_correction)
 
     @property
     def temp_no_adjustment(self):
-        return self.read_reg(REGS.temp_no_adjustment)
+        return self._read_reg(REGS.temp_no_adjustment)
 
     def poll_sesors_and_print(self):
         log = Logger.for_name(__name__)
