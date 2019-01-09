@@ -28,6 +28,24 @@ REGS = IvitMRSRegs(
                                 FunctionalCodes.INPUT, 2, float, 'C'),
 )
 
+# REGS = IvitMRSRegs(
+#     humidity=Register("Relative humidity", 0x0016, FunctionalCodes.INPUT, 2,
+#                       ">f", '%'),
+#     humidity_no_correction=Register("Relative humidity (no correction)",
+#                                     0x0014, FunctionalCodes.INPUT, 2, ">f",
+#                                     '%'),
+#     humidity_no_adjustment=Register("Relative humidity (no adjustment)",
+#                                     0x0012, FunctionalCodes.INPUT, 2, ">f",
+#                                     '%'),
+#     temp=Register("Temperature", 0x0022, FunctionalCodes.INPUT, 2, ">f", 'C'),
+#     temp_sht=Register("Temperature SHT", 0x0034, FunctionalCodes.INPUT, 2,
+#                       float, 'C'),
+#     temp_no_correction=Register("Temperature (no correction)", 0x0020,
+#                                 FunctionalCodes.INPUT, 2, ">f", 'C'),
+#     temp_no_adjustment=Register("Temperature (no adjustment)", 0x0018,
+#                                 FunctionalCodes.INPUT, 2, ">f", 'C'),
+# )
+
 
 class IvitMRS(ModbusUser):
     @classmethod
@@ -43,6 +61,7 @@ class IvitMRS(ModbusUser):
             self._mb = minimalmodbus.Instrument(
                 str(port), dev_addr, mode='rtu')
             super().__init__(self._mb)
+            # super().__init__(dev_addr, str(port), 115200)
         except Exception as e:
             log.error(str(e), exc_info=True)
             raise e

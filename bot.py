@@ -14,6 +14,7 @@ from logging.handlers import RotatingFileHandler
 from mbdevs.dooropener import DoorOpener, Action
 from mbdevs.dooropener import Action as DoorAction
 from mbdevs.trafflight import TrafficLight
+from mbdevs.emergency import Emergency
 from mbdevs import ivitmrs
 from mbdevs.ivitmrs import IvitMRS
 from mbdevs.ivitmrs import REGS as IVIT_MRS_REGS
@@ -72,6 +73,7 @@ class Bot(object):
             self._ivt_mrs = IvitMRS.from_vid_pid(0x0403, 0x6015)
             self._door = DoorOpener.from_vid_pid(0x0403, 0x6015)
             self._trafflight = TrafficLight.from_vid_pid(0x0403, 0x6015)
+            self._emergency = Emergency.from_vid_pid(0x0403, 0x6015)
 
             try:
                 with open(full_access_ids_file) as f:

@@ -1,6 +1,7 @@
 from collections import namedtuple
 from enum import Enum
 from .common import Logger
+from .exceptions import CannotReadARegisterValue
 import pykka
 import minimalmodbus
 
@@ -48,7 +49,8 @@ class Modbus(pykka.ThreadingActor):
 
     def _read(self, reg):
         try:
-            if reg.func_code == FunctionalCodes.COIL:
+            if reg.func_code == FunctionalCodes.COIL or\
+               reg.func_code == FunctionalCodes.DISCRETE:
                 return bool(
                     self._mb.read_bit(reg.addr, reg.func_code.value.read))
             elif reg.value_type is float:
@@ -98,7 +100,7 @@ class ModbusUser:
             "reg": reg
         })
 
-        if not ans:
+        if ans is None:
             raise CannotReadARegisterValue(reg)
 
         return ans
