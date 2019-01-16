@@ -10,6 +10,7 @@ from telegram import ChatAction, ReplyKeyboardMarkup
 
 import logging
 from logging.handlers import RotatingFileHandler
+from threading import Thread
 
 from mbdevs.dooropener import DoorOpener, Action
 from mbdevs.dooropener import Action as DoorAction
@@ -18,6 +19,8 @@ from mbdevs.emergency import Emergency
 from mbdevs import ivitmrs
 from mbdevs.ivitmrs import IvitMRS
 from mbdevs.ivitmrs import REGS as IVIT_MRS_REGS
+from mbdevs.toilet import Toilet
+from mbdevs.toiletdudka import ToiletDudka
 
 
 class _BotLogger():
@@ -74,6 +77,12 @@ class Bot(object):
             self._door = DoorOpener.from_vid_pid(0x0403, 0x6015)
             self._trafflight = TrafficLight.from_vid_pid(0x0403, 0x6015)
             self._emergency = Emergency.from_vid_pid(0x0403, 0x6015)
+            self._toiletdudka = ToiletDudka.from_vid_pid(0x0403, 0x6015)
+            self._toilet = Toilet.from_vid_pid(0x0403, 0x6015)
+            self._toilet.ask({"action":'connected'})
+            self._button_check_th = Thread(target=self._button_check_thread)
+            self._button_check_th.start()
+
 
             try:
                 with open(full_access_ids_file) as f:
@@ -84,11 +93,41 @@ class Bot(object):
                         full_access_ids_file))
                 raise e
 
+        def _button_check_thread(self):
+            prev_msg = 'abcd'
+            while True:
+                msg = self._toilet.ask({"action":'is_paper_left'})
+                if msg != prev_msg:
+                    if msg == 'No paper left!':
+                        self._toiletdudka.tell({"action":ToiletDudka.Action.SOUND_ON})
+                    else:
+                        self._toiletdudka.tell({"action":ToiletDudka.Action.SOUND_OFF})
+                        self._trafflight.tell({
+                        "action": TrafficLight.Action.OFF,
+                        "color": TrafficLight.Color.ALL
+                        })
+                if msg == 'No paper left!':
+                        self._toiletdudka.tell({"action":ToiletDudka.Action.SOUND_ON})
+                        self._trafflight.tell({
+                        "action":
+                        TrafficLight.Action.SEQUENCE,
+                        "sleep_time":
+                        0.05,
+                        "colors":
+                        (TrafficLight.Color.GREEN, TrafficLight.Color.YELLOW,
+                        TrafficLight.Color.RED,TrafficLight.Color.GREEN, TrafficLight.Color.YELLOW,
+                        TrafficLight.Color.RED)
+                        })
+                prev_msg = msg
+                time.sleep(0.5)
+
         def start(self, bot, update):
             """Send a message when the command /start is issued."""
 
             custom_keyboard = [["/open_door"],
-                               ["/get_temperature_and_humidity"]]
+                               ["/get_temperature_and_humidity"],
+                               ["/is_paper_left"],
+                               ["/get_toilet_score"]]
             reply_markup = ReplyKeyboardMarkup(
                 custom_keyboard, resize_keyboard=True)
             update.message.reply_text('Hi!', reply_markup=reply_markup)
@@ -129,6 +168,26 @@ class Bot(object):
                 update.message.reply_text('Something goes wrong!')
 
             self._traffic_light()
+
+        def is_paper_left(self, bot, update):
+            try:
+                msg = self._toilet.ask({"action":'is_paper_left'})
+                update.message.reply_text(msg)
+            except Exception as e:
+                self._log.error(
+                    "Error while connection with a paper button!",
+                    exc_info=True)
+                update.message.reply_text('Something goes wrong!')
+
+        def get_toilet_score(self, bot, update):
+            try:
+                msg = self._toilet.ask({"action":'get_paper_score'})
+                update.message.reply_text(msg)
+            except Exception as e:
+                self._log.error(
+                    "Error while connection with a paper module!",
+                    exc_info=True)
+                update.message.reply_text('Something goes wrong!')
 
         def open_door(self, bot, update):
             self._log.info("User opening door: {}".format(
@@ -200,9 +259,15 @@ def main():
     dp.add_handler(
         CommandHandler("get_temperature_and_humidity",
                        bot.get_temperature_and_humidity))
+    dp.add_handler(CommandHandler("get_toilet_score", bot.get_toilet_score))
+    dp.add_handler(CommandHandler("is_paper_left", bot.is_paper_left))
+    
 
     # Log all errors
     dp.add_error_handler(bot.error)
+
+    #Starting special thread to check if toilet button pressed
+
 
     # Start the Bot
     updater.start_polling()
