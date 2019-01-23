@@ -12,10 +12,10 @@ from .common import Logger, find_device
 from .exceptions import CannotReadARegisterValue
 from .modbus import FunctionalCodes, Register, Modbus, ModbusUser
 
-DoorOpenerRegs = namedtuple('DoorOpenerRegs',
+DoorOpener2Regs = namedtuple('DoorOpener2Regs',
                             ['light', 'light_config', 'door', 'door_config', 'door_button','door_button_config'])
 
-REGS = DoorOpenerRegs(
+REGS = DoorOpener2Regs(
     light=Register(
         name="Light",
         addr=9,
@@ -32,28 +32,28 @@ REGS = DoorOpenerRegs(
         unit=''),
     door=Register(
         name="Door",
-        addr=8,
+        addr=13,
         func_code=FunctionalCodes.COIL,
         count=1,
         value_type=bool,
         unit=''),
     door_config=Register(
         name="Door config",
-        addr=0,
+        addr=5,
         func_code=FunctionalCodes.COIL,
         count=1,
         value_type=bool,
         unit=''),
     door_button=Register(
         name="Door Button",
-        addr=4103,
+        addr=4100,
         func_code=FunctionalCodes.DISCRETE,
         count=1,
         value_type=bool,
         unit=''),
     door_button_config=Register(
         name="Door button config",
-        addr=7,
+        addr=4,
         func_code=FunctionalCodes.COIL,
         count=1,
         value_type=bool,
@@ -73,9 +73,9 @@ class DoorState(Enum):
     CLOSED = 0
 
 
-class DoorOpener(ModbusUser, ThreadingActor):
+class DoorOpener2(ModbusUser, ThreadingActor):
     @classmethod
-    def from_vid_pid(cls, vip, pid, dev_addr=1):
+    def from_vid_pid(cls, vip, pid, dev_addr=2):
         Logger.for_name(__name__).info("Device search...")
         dev = find_device(vip, pid)
         return cls.start(dev.device, dev_addr)
@@ -112,7 +112,7 @@ class DoorOpener(ModbusUser, ThreadingActor):
 
     def _initialize_gpio(self):
         self._write_reg(REGS.door_config, 1)
-        self._write_reg(REGS.light_config, 1)
+        #self._write_reg(REGS.light_config, 1)
         self._write_reg(REGS.door_button_config, 0)
 
 
@@ -131,8 +131,6 @@ class DoorOpener(ModbusUser, ThreadingActor):
                 self._traffic_light_off()
                 self._state = DoorState.CLOSED
                 self._logger.info("Door closed...")
-        elif msg["action"] == Action.CHECK_BUTTON:
-            return self._read_reg(REGS.door_button)
         elif msg["action"] == Action.CHECK_BUTTON:
             return self._read_reg(REGS.door_button)
 

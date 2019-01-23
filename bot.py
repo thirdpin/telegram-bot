@@ -9,11 +9,16 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram import ChatAction, ReplyKeyboardMarkup
 
 import logging
+import requests 
+import html2text
+
 from logging.handlers import RotatingFileHandler
 from threading import Thread
 
 from mbdevs.dooropener import DoorOpener, Action
 from mbdevs.dooropener import Action as DoorAction
+from mbdevs.dooropener2 import DoorOpener2
+from mbdevs.dooropener2 import Action as DoorAction2
 from mbdevs.trafflight import TrafficLight
 from mbdevs.emergency import Emergency
 from mbdevs import ivitmrs
@@ -75,11 +80,16 @@ class Bot(object):
             self._log = _BotLogger.instance()
             self._ivt_mrs = IvitMRS.from_vid_pid(0x0403, 0x6015)
             self._door = DoorOpener.from_vid_pid(0x0403, 0x6015)
+            self._door2 = DoorOpener2.from_vid_pid(0x0403, 0x6015)
             self._trafflight = TrafficLight.from_vid_pid(0x0403, 0x6015)
             self._emergency = Emergency.from_vid_pid(0x0403, 0x6015)
             self._toiletdudka = ToiletDudka.from_vid_pid(0x0403, 0x6015)
             self._toilet = Toilet.from_vid_pid(0x0403, 0x6015)
             self._toilet.ask({"action":'connected'})
+
+            self._door_manager_th = Thread(target = self._door_manager_thread)
+            self._door_manager_th.start()
+
             self._button_check_th = Thread(target=self._button_check_thread)
             self._button_check_th.start()
 
@@ -92,6 +102,43 @@ class Bot(object):
                     "File \"{}\" with full access IDs is not found!".format(
                         full_access_ids_file))
                 raise e
+
+        def _door_manager_thread(self):
+            prevButtonState1 = True
+            prevButtonState2 = True
+            tim1 = 0
+            tim2 = 0
+            while True:
+                buttonState2 = self._door2.ask({"action":DoorAction2.CHECK_BUTTON})
+                buttonState1 = self._door.ask({"action":DoorAction.CHECK_BUTTON})
+                
+                if buttonState2 != prevButtonState2:
+                    if buttonState2 == False:
+                        if tim1 <= 2:
+                            time.sleep(3)
+                            self._door.tell(({"action":DoorAction.OPEN}))
+                            time.sleep(3)
+                            self._door.tell(({"action":DoorAction.OPEN}))
+                            time.sleep(3)
+                            self._door.tell(({"action":DoorAction.OPEN}))
+                        tim1 = 0
+
+                if buttonState1 != prevButtonState1:
+                    if buttonState1 == False:
+                        if tim2 <= 2:
+                            time.sleep(3)
+                            self._door2.tell(({"action":DoorAction2.OPEN}))
+                            time.sleep(3)
+                            self._door2.tell(({"action":DoorAction2.OPEN}))
+                            time.sleep(3)
+                            self._door2.tell(({"action":DoorAction2.OPEN}))
+                        tim2 = 0
+
+                prevButtonState1 = buttonState1
+                prevButtonState2 = buttonState2
+                time.sleep(0.05)
+                tim1 = tim1 + 0.05
+                tim2 = tim2 + 0.05
 
         def _button_check_thread(self):
             prev_msg = 'abcd'
@@ -125,9 +172,11 @@ class Bot(object):
             """Send a message when the command /start is issued."""
 
             custom_keyboard = [["/open_door"],
+                               ["/open_door_2"], 
                                ["/get_temperature_and_humidity"],
                                ["/is_paper_left"],
-                               ["/get_toilet_score"]]
+                               ["/get_toilet_score"],
+                               ["/tell_a_joke"]]
             reply_markup = ReplyKeyboardMarkup(
                 custom_keyboard, resize_keyboard=True)
             update.message.reply_text('Hi!', reply_markup=reply_markup)
@@ -218,6 +267,45 @@ class Bot(object):
                     "Error while connection with a door opener!",
                     exc_info=True)
                 update.message.reply_text('Cannot open the door.')
+        
+        def tell_a_joke(self,bot,update):
+            url = 'https://bash.im/random/'
+            r = requests.get(url)
+            i = r.text.find('<div class="text">')
+            k = r.text.find('</div>',i)
+            update.message.reply_text(html2text.html2text(r.text[i:k+6]))
+
+
+        def open_door_2(self, bot, update):
+            self._log.info("User opening door: {}".format(
+                update.message.chat.id))
+
+            if not self._check_user_access(update):
+                return
+
+            update.message.reply_text('Opening the door...')
+            try:
+                not_is_opened = self._door2.ask({"action": DoorAction2.OPEN})
+                if not_is_opened:
+                    update.message.reply_text('The door was opened.')
+                    self._trafflight.tell({
+                        "action":
+                        TrafficLight.Action.SEQUENCE,
+                        "sleep_time":
+                        0.5,
+                        "colors":
+                        (TrafficLight.Color.GREEN, TrafficLight.Color.GREEN,
+                        TrafficLight.Color.GREEN, TrafficLight.Color.GREEN,
+                        TrafficLight.Color.GREEN, TrafficLight.Color.GREEN)
+                    })
+                else:
+                    update.message.reply_text('The door is already opened.')
+            except Exception as e:
+                self._log.error(
+                    "Error while connection with a door opener!",
+                    exc_info=True)
+                update.message.reply_text('Cannot open the door.')
+
 
         def error(self, bot, update, error):
             """Log Errors caused by Updates."""
@@ -233,6 +321,8 @@ class Bot(object):
                 return False
             else:
                 return True
+
+        
 
 
 def main():
@@ -256,6 +346,8 @@ def main():
     # On different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", bot.start))
     dp.add_handler(CommandHandler("open_door", bot.open_door))
+    dp.add_handler(CommandHandler("tell_a_joke", bot.tell_a_joke))
+    dp.add_handler(CommandHandler("open_door_2", bot.open_door_2))
     dp.add_handler(
         CommandHandler("get_temperature_and_humidity",
                        bot.get_temperature_and_humidity))
